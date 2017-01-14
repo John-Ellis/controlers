@@ -31,7 +31,7 @@ class Drone:
                                        self.time_delta)
 
     # Update gas utilization # TODO use thrust
-    def updateMass(self, thrust, scale=0.005):
+    def updateMass(self, thrust, scale=0.008):
         self.mass[self.step] = self.mass[self.step - 1] - scale * self.time_delta
 
     # Getters with noise
@@ -80,17 +80,16 @@ class Drone:
         plt.savefig('grd_pos_drone.png', bbox_inches='tight', dpi=160)
 
         fig = plt.figure(figsize=(10, 10))
-        plt.title("Wind Velocity")
+        plt.title("Wind Velocity - Drone")
         plt.plot(self.wind_vel[:, 0], self.wind_vel[:, 1], zorder=1, color='black')
         plt.scatter(self.wind_vel[:, 0], self.wind_vel[:, 1], marker='o',
                     c=c, cmap=cmap, linewidth='0', zorder=2)
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])
-        plt.savefig('wind_vel.png', bbox_inches='tight', dpi=160)
+        plt.savefig('wind_vel_drone.png', bbox_inches='tight', dpi=160)
         
         fig = plt.figure(figsize=(10, 10))
         plt.title("Mass - Drone")
         plt.semilogy(self.mass, color='black')
-        plt.ylim([1E-5, 100])
+        plt.ylim([1E-2, 10])
         plt.savefig('mass_drone.png', bbox_inches='tight', dpi=160)
-        

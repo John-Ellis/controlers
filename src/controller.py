@@ -60,7 +60,6 @@ class DeadController:
     
     # Plot the history
     def plot(self):
-
         cmap = cm.jet
         c = np.linspace(0, 10, self.dur)
 
@@ -84,18 +83,12 @@ class DeadController:
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])        
         plt.savefig('thrust.png', bbox_inches='tight', dpi=160)
-        
+
         fig = plt.figure(figsize=(10, 10))
         plt.title("Error")
         plt.plot(self.error, color='black')
         plt.ylim([0, 10])
         plt.savefig('error.png', bbox_inches='tight', dpi=160)
-        
-        fig = plt.figure(figsize=(10, 10))
-        plt.title("Mass - Controller")
-        plt.semilogy(self.mass, color='black')
-        plt.ylim([1E-5, 100])
-        plt.savefig('mass_controller.png', bbox_inches='tight', dpi=160)
         
 
 class BasicController(DeadController):
@@ -106,10 +99,9 @@ class BasicController(DeadController):
         
     def updateThrust(self):
         self.mass[self.step] = (0.9 * self.mass[self.step - 1] +
-                                0.1 * np.linalg.norm(self.thrust[self.step - 1] * self.time_delta /
-                                                     (self.air_vel[self.step] -
-                                                      self.air_vel[self.step - 1] + 1E-9)))
-        print(self.step, self.mass[self.step])
+                                0.1 * np.linalg.norm(self.thrust[self.step - 1]) * self.time_delta /
+                                np.linalg.norm(self.air_vel[self.step] -
+                                               self.air_vel[self.step - 1] + 1E-6))
         self.wind_vel[self.step] = (0.9 * self.wind_vel[self.step - 1] +
                                     (0.1 * ((self.grd_pos[self.step] - self.grd_pos[self.step - 1])
                                             / self.time_delta - self.air_vel[self.step])))
@@ -127,6 +119,28 @@ class BasicController(DeadController):
         if np.sum(np.isnan(desired_thrust)) == 0:
             self.thrust[self.step] = desired_thrust
             self.capThrust()
+
+    def plot(self):
+        super().plot()
+
+        cmap = cm.jet
+        c = np.linspace(0, 10, self.dur)
+
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Mass - Controller")
+        plt.semilogy(self.mass, color='black')
+        plt.ylim([1E-2, 10])
+        plt.savefig('mass_controller.png', bbox_inches='tight', dpi=160)
+        
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Wind Velocity - Controller")
+        plt.plot(self.wind_vel[:, 0], self.wind_vel[:, 1], zorder=1, color='black')
+        plt.scatter(self.wind_vel[:, 0], self.wind_vel[:, 1], marker='o',
+                    c=c, cmap=cmap, linewidth='0', zorder=2)
+        plt.xlim([-5, 5])
+        plt.ylim([-5, 5])        
+        plt.savefig('wind_vel_controller.png', bbox_inches='tight', dpi=160)        
+        
         
 class CMAController(DeadController):
     def __init__(self, goal, weights, dim=2, dur=100, time_delta=1.0):
