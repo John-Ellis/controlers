@@ -2,14 +2,16 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import seaborn
 
 class Drone:
 
     # Constructor. Tell us where the drone is and where it should initally go
-    def __init__(self, dst, time_delta=1.0):
-        self.dim = 2
-        self.dur = 10000
-        self.dst = np.zeros((self.dur, self.dim)) # m
+    def __init__(self, dim=2, dur=100, time_delta=1.0):
+        self.dim = dim
+        self.dur = dur
+        self.time_delta = time_delta
         self.thrust = np.zeros((self.dur, self.dim)) # m
         self.grd_pos = np.zeros((self.dur, self.dim)) # m
         self.grd_vel = np.zeros((self.dur, self.dim)) # m/s
@@ -18,28 +20,34 @@ class Drone:
         self.air_acc = np.zeros((self.dur, self.dim)) # m/s^2
         self.wind_vel = np.zeros((self.dur, self.dim)) # m/s
         self.mass = np.ones(self.dur) # kg
-        self.step = 1 # s
-
-        # Update based on variables
-        self.time_delta = time_delta
-        self.dst[self.step] = dst
+        self.step = 0 # s
 
     # Update wind gradually when it's called
-    def updateWind(self, scale=1.0):
-        self.wind_vel[self.step] = (self.wind_vel[self.step - 1] +
-                                    scale *
-                                    (np.random.rand(self.dim) - 0.5) *
-                                    self.time_delta)
+    def updateWind(self, scale=0.5):
+        self.wind_vel[self.step, :] = (self.wind_vel[self.step - 1] +
+                                       scale *
+                                       (np.random.rand(self.dim) - 0.5) *
+                                       self.time_delta)
 
     # Update gas utilization # TODO use thrust
     def updateMass(self, thrust, scale=0.001):
         self.mass[self.step] = self.mass[self.step - 1] - scale * self.time_delta
+
+    # Getters with noise
+    def getGrdPos(self):
+        return self.grd_pos[self.step]
+
+    def getAirVel(self):
+        return self.air_vel[self.step]
+
+    def getGrdAcc(self):
+        return self.grd_acc[self.step]
         
     # Apply a force from the controller
     def update(self, thrust):
 
         # Exit with false if we're done
-        if self.step >= self.dur - 1:
+        if self.step >= self.dur - 1 or thrust is None:
             return False
 
         # Update timestep
@@ -47,25 +55,37 @@ class Drone:
         s = self.step
         
         # Update state of drone
-        self.thrust[s] = thrust
+        self.thrust[s, :] = thrust
         self.updateWind()
-        self.air_acc[s] = self.thrust[s] / self.mass[s - 1]
-        self.air_vel[s] = self.air_vel[s - 1] + self.air_acc[s] * self.time_delta
-        self.grd_vel[s] = self.air_vel[s] + self.wind_vel[s]
-        self.grd_pos[s] = self.grd_pos[s - 1] + self.grd_vel[s] * self.time_delta
-        self.grd_acc[s] = (self.grd_vel[s] - self.grd_vel[s - 1]) / self.time_delta
+        self.air_acc[s, :] = self.thrust[s] / self.mass[s - 1]
+        self.air_vel[s, :] = self.air_vel[s - 1] + self.air_acc[s] * self.time_delta
+        self.grd_vel[s, :] = self.air_vel[s] + self.wind_vel[s]
+        self.grd_pos[s, :] = self.grd_pos[s - 1] + self.grd_vel[s] * self.time_delta
+        self.grd_acc[s, :] = (self.grd_vel[s] - self.grd_vel[s - 1]) / self.time_delta
         self.updateMass(thrust)
         
         return True
-
+    
     def plot(self):
+
+        cmap = cm.jet
+        c = np.linspace(0, 10, self.dur)
+        
         fig = plt.figure(figsize=(10, 10))
-        plt.title("Ground Position")
-        plt.plot(self.grd_pos[:, 0], self.grd_pos[:, 1], '-')
-        plt.savefig('grd_pos.png', bbox_inches='tight', dpi=160)
+        plt.title("Ground Position - Drone")
+        plt.plot(self.grd_pos[:, 0], self.grd_pos[:, 1], zorder=1, color='black')
+        plt.scatter(self.grd_pos[:, 0], self.grd_pos[:, 1], marker='o',
+                    c=c, cmap=cmap, linewidth='0', zorder=2)
+        plt.xlim([-10, 10])
+        plt.ylim([-10, 10])
+        plt.savefig('grd_pos_drone.png', bbox_inches='tight', dpi=160)
 
         fig = plt.figure(figsize=(10, 10))
         plt.title("Wind Velocity")
-        plt.plot(self.wind_vel[:, 0], self.wind_vel[:, 1], '-')
+        plt.plot(self.wind_vel[:, 0], self.wind_vel[:, 1], zorder=1, color='black')
+        plt.scatter(self.wind_vel[:, 0], self.wind_vel[:, 1], marker='o',
+                    c=c, cmap=cmap, linewidth='0', zorder=2)
+        plt.xlim([-5, 5])
+        plt.ylim([-5, 5])
         plt.savefig('wind_vel.png', bbox_inches='tight', dpi=160)
         
