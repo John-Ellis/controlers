@@ -21,10 +21,8 @@ class Controller:
         self.air_vel = np.zeros((self.dur, self.dim)) # m/s
         self.grd_acc = np.zeros((self.dur, self.dim)) # m/s^2
         self.thrust = np.zeros((self.dur, self.dim)) # N
-        self.error = np.zeros(self.dur) #
-
+        self.error = np.zeros((self.dur))
         self.dst[self.step, :] = goal
-
         
     # Use measurements to decide thrust
     def update(self, grd_pos, air_vel, grd_acc, dst, error):
@@ -41,8 +39,18 @@ class Controller:
         self.dst[self.step, :] = dst
         self.error[self.step] = error
 
+        self.updateThrust()
+        
         return self.thrust[self.step]
 
+    # Report error
+    def reportError(self):
+        return np.mean(self.error)
+    
+    # Update thrust
+    def updateThrust(self):
+        pass
+    
     # Plot the history
     def plot(self):
 
@@ -77,3 +85,20 @@ class Controller:
         plt.savefig('error.png', bbox_inches='tight', dpi=160)
         
                                         
+class AdaController(Controller):
+    def __init__(self, goal, weights, dim=2, dur=100, time_delta=1.0):
+        super().__init__(goal, dim, dur, time_delta)
+        self.weights = weights
+
+    def updateThrust(self):
+        pass
+
+class CMAController(Controller):
+    def __init__(self, goal, weights, dim=2, dur=100, time_delta=1.0):
+        super().__init__(goal, dim, dur, time_delta)
+        self.weights = weights
+
+    def updateThrust(self):
+        pass
+
+    

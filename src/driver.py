@@ -5,8 +5,7 @@ from drone import Drone
 from controller import Controller
 
 def main():
-    np.random.seed(13)
-    dst = (np.random.rand() - 0.5) * 10
+    dst = np.zeros(2)
     d = Drone()
     c = Controller(dst)
     done = False
