@@ -8,7 +8,7 @@ import seaborn
 class Drone:
 
     # Constructor. Tell us where the drone is and where it should initally go
-    def __init__(self, dim=2, dur=100, time_delta=1.0):
+    def __init__(self, dim=2, dur=100, time_delta=0.1):
         self.dim = dim
         self.dur = dur
         self.time_delta = time_delta
@@ -20,28 +20,27 @@ class Drone:
         self.air_acc = np.zeros((self.dur, self.dim)) # m/s^2
         self.wind_vel = np.zeros((self.dur, self.dim)) # m/s
         self.mass = np.ones(self.dur) # kg
-        self.step = 0 # s
-
+        self.step = 0 #
+        self.wind_vel[0] = 1.0 * (np.random.rand(self.dim) - 0.5)
+        
     # Update wind gradually when it's called
-    def updateWind(self, scale=0.5):
+    def updateWind(self, scale=4.0):
         self.wind_vel[self.step, :] = (self.wind_vel[self.step - 1] +
                                        scale *
                                        (np.random.rand(self.dim) - 0.5) *
                                        self.time_delta)
 
     # Update gas utilization # TODO use thrust
-    def updateMass(self, thrust, scale=0.001):
+    def updateMass(self, thrust, scale=0.005):
         self.mass[self.step] = self.mass[self.step - 1] - scale * self.time_delta
 
     # Getters with noise
     def getGrdPos(self):
-        return self.grd_pos[self.step]
-
+        return self.grd_pos[self.step] + np.random.normal(0, 0.5, self.dim)
     def getAirVel(self):
-        return self.air_vel[self.step]
-
+        return self.air_vel[self.step] + np.random.normal(0, 0.1, self.dim)
     def getGrdAcc(self):
-        return self.grd_acc[self.step]
+        return self.grd_acc[self.step] + np.random.normal(0, 0.1, self.dim)
         
     # Apply a force from the controller
     def update(self, thrust):
@@ -88,4 +87,10 @@ class Drone:
         plt.xlim([-5, 5])
         plt.ylim([-5, 5])
         plt.savefig('wind_vel.png', bbox_inches='tight', dpi=160)
+        
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Mass - Drone")
+        plt.semilogy(self.mass, color='black')
+        plt.ylim([1E-5, 100])
+        plt.savefig('mass_drone.png', bbox_inches='tight', dpi=160)
         

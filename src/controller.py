@@ -5,15 +5,17 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn
 
-class Controller:
+class DeadController:
 
     # Constructor. Keep the history of controller
-    def __init__(self, goal, dim=2, dur=100, time_delta=1.0):
+    def __init__(self, goal, dim=2, dur=100, time_delta=0.1):
 
         self.step = 0 # step
         self.dim = dim
         self.dur = dur
         self.time_delta = time_delta
+        self.thrust_limit = 5.0
+        self.vel_limit = 10.0
 
         # Measurements of drone
         self.dst = np.zeros((self.dur, self.dim)) # m
@@ -46,6 +48,11 @@ class Controller:
     # Report error
     def reportError(self):
         return np.mean(self.error)
+
+    def capThrust(self):
+        magnitude = np.linalg.norm(self.thrust[self.step])
+        if magnitude > self.thrust_limit:
+            self.thrust[self.step] /= magnitude / self.thrust_limit
     
     # Update thrust
     def updateThrust(self):
@@ -84,16 +91,44 @@ class Controller:
         plt.ylim([0, 10])
         plt.savefig('error.png', bbox_inches='tight', dpi=160)
         
-                                        
-class AdaController(Controller):
-    def __init__(self, goal, weights, dim=2, dur=100, time_delta=1.0):
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Mass - Controller")
+        plt.semilogy(self.mass, color='black')
+        plt.ylim([1E-5, 100])
+        plt.savefig('mass_controller.png', bbox_inches='tight', dpi=160)
+        
+
+class BasicController(DeadController):
+    def __init__(self, goal, dim=2, dur=100, time_delta=0.1):
         super().__init__(goal, dim, dur, time_delta)
-        self.weights = weights
-
+        self.mass = np.ones((self.dur)) # kg
+        self.wind_vel = np.zeros((self.dur, self.dim)) # m/s
+        
     def updateThrust(self):
-        pass
-
-class CMAController(Controller):
+        self.mass[self.step] = (0.9 * self.mass[self.step - 1] +
+                                0.1 * np.linalg.norm(self.thrust[self.step - 1] * self.time_delta /
+                                                     (self.air_vel[self.step] -
+                                                      self.air_vel[self.step - 1] + 1E-9)))
+        print(self.step, self.mass[self.step])
+        self.wind_vel[self.step] = (0.9 * self.wind_vel[self.step - 1] +
+                                    (0.1 * ((self.grd_pos[self.step] - self.grd_pos[self.step - 1])
+                                            / self.time_delta - self.air_vel[self.step])))
+        dist = self.dst[self.step] - self.grd_pos[self.step]
+        grd_vel = self.air_vel[self.step] + self.wind_vel[self.step]
+        # Go faster if we're too far away
+        desired_grd_vel = ((dist / (np.linalg.norm(dist) + 1E-9)) *
+                            np.sqrt(2 * self.thrust_limit * np.linalg.norm(dist) /
+                                         self.mass[self.step]))
+        
+        desired_air_vel = desired_grd_vel - self.wind_vel[self.step]
+        desired_thrust = (self.mass[self.step] *
+                          (desired_air_vel - self.air_vel[self.step]) /
+                           self.time_delta)
+        if np.sum(np.isnan(desired_thrust)) == 0:
+            self.thrust[self.step] = desired_thrust
+            self.capThrust()
+        
+class CMAController(DeadController):
     def __init__(self, goal, weights, dim=2, dur=100, time_delta=1.0):
         super().__init__(goal, dim, dur, time_delta)
         self.weights = weights
