@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn
@@ -89,9 +91,55 @@ class DeadController:
         plt.plot(self.error, color='black')
         plt.ylim([0, 10])
         plt.savefig('error.png', bbox_inches='tight', dpi=160)
-        
 
-class BasicController(DeadController):
+class PIDposController(DeadController):
+    def __init__(self, goal, dim=2, dur=100, time_delta=0.1):
+        super().__init__(goal, dim, dur, time_delta)
+        self.mass = np.ones((self.dur)) # kg
+        self.wind_vel = np.zeros((self.dur, self.dim)) # m/s
+        self.old_dist = np.zeros(self.dim)
+        self.really_old_dist = np.zeros(self.dim)
+        self.dist = np.zeros(self.dim)
+    
+    def updateThrust(self):
+        self.old_dist = self.dist
+        self.dist = self.dst[self.step] - self.grd_pos[self.step]
+        self.really_old_dist += self.dist*self.time_delta
+		
+        pk = 40
+        ik = .0001
+        dk = .2
+		
+        # apply PID
+        desired_thrust = pk*self.dist + ik*self.really_old_dist + dk*(self.old_dist-self.dist)
+		
+        if np.sum(np.isnan(desired_thrust)) == 0:
+            self.thrust[self.step] = desired_thrust
+            self.capThrust()
+
+    def plot(self):
+        super().plot()
+
+        cmap = cm.jet
+        c = np.linspace(0, 10, self.dur)
+
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Mass - Controller")
+        plt.semilogy(self.mass, color='black')
+        plt.ylim([1E-2, 10])
+        plt.savefig('mass_controller.png', bbox_inches='tight', dpi=160)
+        
+        fig = plt.figure(figsize=(10, 10))
+        plt.title("Wind Velocity - Controller")
+        plt.plot(self.wind_vel[:, 0], self.wind_vel[:, 1], zorder=1, color='black')
+        plt.scatter(self.wind_vel[:, 0], self.wind_vel[:, 1], marker='o',
+                    c=c, cmap=cmap, linewidth='0', zorder=2)
+        plt.xlim([-5, 5])
+        plt.ylim([-5, 5])        
+        plt.savefig('wind_vel_controller.png', bbox_inches='tight', dpi=160)        
+    
+
+class AdaController(DeadController):
     def __init__(self, goal, dim=2, dur=100, time_delta=0.1):
         super().__init__(goal, dim, dur, time_delta)
         self.mass = np.ones((self.dur)) # kg

@@ -2,13 +2,13 @@
 
 import numpy as np
 from drone import Drone
-from controller import DeadController, BasicController
+from controller import DeadController, AdaController, PIDposController
 
 def main():
     np.random.seed(4)
     dst = np.array([0, 0])
     d = Drone(dur=1000)
-    c = BasicController(dst, dur=1000)
+    c = PIDposController(dst, dur=1000)
     done = False
     while not done:
         error = np.sqrt(np.sum(np.power(d.grd_pos[d.step] - dst, 2)))
